@@ -1,0 +1,27 @@
+{
+  "tests": [
+    {
+      "name": "Test save chat",
+      "method": "POST",
+      "path": "/",
+      "body": {
+        "title": "Test conversation",
+        "messages": [
+          {
+            "role": "user",
+            "content": "Hello"
+          },
+          {
+            "role": "assistant",
+            "content": "Hi there!"
+          }
+        ]
+      },
+      "expectedStatus": 200,
+      "expectedBody": {
+        "chat_id": "number"
+      },
+      "bodyMatcher": "partial"
+    }
+  ]
+}

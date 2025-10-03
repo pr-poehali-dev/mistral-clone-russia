@@ -1,3 +1,6 @@
 {
+  "get-chats": "https://functions.poehali.dev/dce3f92e-296c-4523-b3a7-65f80dfe2498",
+  "get-chat": "https://functions.poehali.dev/7ec8d3dd-dff9-43e2-bece-99b83b4ac785",
+  "save-chat": "https://functions.poehali.dev/8d7a3179-c739-4f8a-998f-e26efdfa175b",
   "chat": "https://functions.poehali.dev/2d8e6f22-ac2c-4cde-8e2d-08673f484e69"
 }

@@ -1,0 +1,14 @@
+{
+  "tests": [
+    {
+      "name": "Test get chats",
+      "method": "GET",
+      "path": "/",
+      "expectedStatus": 200,
+      "expectedBody": {
+        "chats": "array"
+      },
+      "bodyMatcher": "partial"
+    }
+  ]
+}

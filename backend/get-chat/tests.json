@@ -1,0 +1,10 @@
+{
+  "tests": [
+    {
+      "name": "Test get chat with invalid id",
+      "method": "GET",
+      "path": "/?chat_id=99999",
+      "expectedStatus": 404
+    }
+  ]
+}

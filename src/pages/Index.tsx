@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Icon from '@/components/ui/icon';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -29,11 +29,82 @@ const Index = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [chatHistory] = useState<ChatHistory[]>([
-    { id: '1', title: 'Разработка веб-приложения', lastMessage: 'Как создать React компонент?', date: new Date() },
-    { id: '2', title: 'Помощь с кодом', lastMessage: 'Объясни async/await', date: new Date(Date.now() - 86400000) },
-    { id: '3', title: 'Вопросы по TypeScript', lastMessage: 'Что такое generics?', date: new Date(Date.now() - 172800000) }
-  ]);
+  const [chatHistory, setChatHistory] = useState<ChatHistory[]>([]);
+  const [currentChatId, setCurrentChatId] = useState<string | null>(null);
+
+  useEffect(() => {
+    loadChatHistory();
+  }, []);
+
+  const loadChatHistory = async () => {
+    try {
+      const response = await fetch('https://functions.poehali.dev/dce3f92e-296c-4523-b3a7-65f80dfe2498');
+      const data = await response.json();
+      if (data.chats) {
+        setChatHistory(data.chats.map((chat: any) => ({
+          id: chat.id.toString(),
+          title: chat.title,
+          lastMessage: chat.lastMessage,
+          date: new Date(chat.date)
+        })));
+      }
+    } catch (error) {
+      console.error('Failed to load chat history:', error);
+    }
+  };
+
+  const loadChat = async (chatId: string) => {
+    try {
+      const response = await fetch(`https://functions.poehali.dev/7ec8d3dd-dff9-43e2-bece-99b83b4ac785?chat_id=${chatId}`);
+      const data = await response.json();
+      if (data.messages) {
+        setMessages(data.messages.map((msg: any) => ({
+          id: msg.id,
+          role: msg.role,
+          content: msg.content,
+          timestamp: new Date(msg.timestamp)
+        })));
+        setCurrentChatId(chatId);
+        setActiveSection('chat');
+      }
+    } catch (error) {
+      console.error('Failed to load chat:', error);
+    }
+  };
+
+  const saveCurrentChat = async () => {
+    if (messages.length === 0) return;
+    
+    const title = messages[0].content.slice(0, 50) + (messages[0].content.length > 50 ? '...' : '');
+    
+    try {
+      const response = await fetch('https://functions.poehali.dev/8d7a3179-c739-4f8a-998f-e26efdfa175b', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title,
+          messages: messages.map(msg => ({
+            role: msg.role,
+            content: msg.content
+          }))
+        })
+      });
+      
+      const data = await response.json();
+      if (data.chat_id) {
+        setCurrentChatId(data.chat_id.toString());
+        await loadChatHistory();
+      }
+    } catch (error) {
+      console.error('Failed to save chat:', error);
+    }
+  };
+
+  const startNewChat = () => {
+    setMessages([]);
+    setCurrentChatId(null);
+    setActiveSection('chat');
+  };
 
   const handleSendMessage = async () => {
     if (!inputValue.trim() || isLoading) return;
@@ -75,6 +146,10 @@ const Index = () => {
           timestamp: new Date()
         };
         setMessages(prev => [...prev, aiResponse]);
+        
+        if (!currentChatId) {
+          setTimeout(() => saveCurrentChat(), 500);
+        }
       } else {
         const errorMessage: Message = {
           id: (Date.now() + 1).toString(),
@@ -156,6 +231,7 @@ const Index = () => {
                   {chatHistory.map(chat => (
                     <button
                       key={chat.id}
+                      onClick={() => loadChat(chat.id)}
                       className="w-full text-left px-3 py-2 rounded-lg hover:bg-muted transition-colors group"
                     >
                       <p className="text-sm font-medium truncate group-hover:text-primary">{chat.title}</p>
@@ -184,7 +260,7 @@ const Index = () => {
             </h2>
           </div>
           
-          <Button variant="outline" size="sm" className="gap-2">
+          <Button variant="outline" size="sm" className="gap-2" onClick={startNewChat}>
             <Icon name="Plus" size={16} />
             Новый чат
           </Button>
@@ -309,7 +385,7 @@ const Index = () => {
             <div className="max-w-4xl mx-auto px-6 py-8 space-y-4 animate-fade-in">
               <h2 className="text-2xl font-bold mb-6">История диалогов</h2>
               {chatHistory.map(chat => (
-                <Card key={chat.id} className="p-6 hover:shadow-md transition-shadow cursor-pointer">
+                <Card key={chat.id} className="p-6 hover:shadow-md transition-shadow cursor-pointer" onClick={() => loadChat(chat.id)}>
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <h3 className="font-semibold text-lg mb-2">{chat.title}</h3>
