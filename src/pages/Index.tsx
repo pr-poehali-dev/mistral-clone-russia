@@ -28,14 +28,15 @@ const Index = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const [chatHistory] = useState<ChatHistory[]>([
     { id: '1', title: 'Разработка веб-приложения', lastMessage: 'Как создать React компонент?', date: new Date() },
     { id: '2', title: 'Помощь с кодом', lastMessage: 'Объясни async/await', date: new Date(Date.now() - 86400000) },
     { id: '3', title: 'Вопросы по TypeScript', lastMessage: 'Что такое generics?', date: new Date(Date.now() - 172800000) }
   ]);
 
-  const handleSendMessage = () => {
-    if (!inputValue.trim()) return;
+  const handleSendMessage = async () => {
+    if (!inputValue.trim() || isLoading) return;
     
     const newMessage: Message = {
       id: Date.now().toString(),
@@ -44,18 +45,56 @@ const Index = () => {
       timestamp: new Date()
     };
     
-    setMessages([...messages, newMessage]);
+    const updatedMessages = [...messages, newMessage];
+    setMessages(updatedMessages);
     setInputValue('');
+    setIsLoading(true);
     
-    setTimeout(() => {
-      const aiResponse: Message = {
+    try {
+      const response = await fetch('https://functions.poehali.dev/2d8e6f22-ac2c-4cde-8e2d-08673f484e69', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          messages: updatedMessages.map(msg => ({
+            role: msg.role,
+            content: msg.content
+          })),
+          model: 'gpt-3.5-turbo'
+        })
+      });
+      
+      const data = await response.json();
+      
+      if (response.ok && data.message) {
+        const aiResponse: Message = {
+          id: (Date.now() + 1).toString(),
+          content: data.message,
+          role: 'assistant',
+          timestamp: new Date()
+        };
+        setMessages(prev => [...prev, aiResponse]);
+      } else {
+        const errorMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          content: data.error || 'Произошла ошибка при обработке запроса. Проверьте настройки API ключа.',
+          role: 'assistant',
+          timestamp: new Date()
+        };
+        setMessages(prev => [...prev, errorMessage]);
+      }
+    } catch (error) {
+      const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
-        content: 'Спасибо за ваш вопрос! Я AI-ассистент, готовый помочь вам. Эта демонстрационная версия показывает интерфейс чата.',
+        content: 'Ошибка соединения с сервером. Попробуйте позже.',
         role: 'assistant',
         timestamp: new Date()
       };
-      setMessages(prev => [...prev, aiResponse]);
-    }, 1000);
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const navigation = [
@@ -230,6 +269,20 @@ const Index = () => {
                         )}
                       </div>
                     ))}
+                    {isLoading && (
+                      <div className="flex gap-4">
+                        <Avatar className="w-10 h-10 bg-primary text-primary-foreground">
+                          <AvatarFallback>AI</AvatarFallback>
+                        </Avatar>
+                        <Card className="p-4">
+                          <div className="flex gap-1">
+                            <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                            <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                            <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                          </div>
+                        </Card>
+                      </div>
+                    )}
                   </div>
                 )}
               </ScrollArea>
@@ -240,11 +293,12 @@ const Index = () => {
                     placeholder="Напишите сообщение..."
                     value={inputValue}
                     onChange={(e) => setInputValue(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+                    onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSendMessage()}
+                    disabled={isLoading}
                     className="flex-1"
                   />
-                  <Button onClick={handleSendMessage} size="icon">
-                    <Icon name="Send" size={20} />
+                  <Button onClick={handleSendMessage} size="icon" disabled={isLoading}>
+                    <Icon name={isLoading ? "Loader2" : "Send"} size={20} className={isLoading ? "animate-spin" : ""} />
                   </Button>
                 </div>
               </div>
